@@ -1,0 +1,6 @@
+{
+  "appId": "com.deviation.tictactoe",
+  "appName": "Tic Tac Toe",
+  "bundledWebRuntime": false,
+  "webDir": "www"
+}
