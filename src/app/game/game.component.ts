@@ -1,6 +1,11 @@
 import { Component, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { AnimationHelper } from '../_utilities/animation.helper';
 
+enum Player {
+  x,
+  o
+}
+
 @Component({
   selector: 'app-game',
   templateUrl: './game.component.html',
@@ -13,12 +18,16 @@ export class GameComponent implements AfterViewInit {
   // Conf options
   readonly width = parseInt(`${window.innerWidth * 0.8}`, 10);
   readonly height = parseInt(`${window.innerWidth * 0.8}`, 10);
-  readonly lineWidth = 2;
+  readonly lineWidth = 4;
   // Assume Square Matrix
   readonly matrixRows = 3;
-  readonly blockWidth = (this.width - (2 * (this.matrixRows - 1))) / this.matrixRows;
+  readonly blockWidth = ((this.width - (2 * (this.matrixRows - 1))) / this.matrixRows);
 
   private readonly _animationHelper = new AnimationHelper();
+
+  private _turnCount = 0;
+  private _canDraw = false;
+  private _turnMatrix = new Array(this.matrixRows).fill(null).map(() => new Array(this.matrixRows).fill(null));
 
   constructor() { }
 
@@ -42,12 +51,9 @@ export class GameComponent implements AfterViewInit {
     /**
      * Draw Grid
      */
+    this._lockDraw();
     await this._drawGrid();
-
-
-    // await animationHelper.animateCircle(50, 50, 25);
-    // await animationHelper.animateCross(150, 150, 25);
-    // await animationHelper.animateCircle(50, 250, 25);
+    this._unlockDraw();
 
   }
 
@@ -66,22 +72,92 @@ export class GameComponent implements AfterViewInit {
       const _yOffset = this.blockWidth * i + (this.lineWidth * (i - 1));
       await this._animationHelper.animateLine({ x: 0, y: _yOffset }, { x: this.width, y: _yOffset }, 20);
     }
+
+    return;
+  }
+
+  private async _drawCrossKnotAtGridPos(i: number, j: number) {
+
+    if (this._turnMatrix[i][j] != null) {
+      return;
+    }
+
+    const blockPadding = 16;
+    const radius = Math.ceil((this.blockWidth - blockPadding * 2) / 2);
+    const blockPaddingFactor = Math.ceil(blockPadding / 2);
+    const lineWidthI = i ? this.lineWidth : 0;
+    const lineWidthJ = j ? this.lineWidth : 0;
+
+    const delError = blockPadding / 2;
+
+    const coords: Coords = {
+      x: (i * (this.blockWidth + lineWidthI)) + radius + blockPaddingFactor + delError,
+      y: (j * (this.blockWidth + lineWidthJ)) + radius + blockPaddingFactor + delError
+    };
+
+    this._lockDraw();
+    if (this._turnCount % 2 === 0) {
+      await this._animationHelper.animateCircle(coords.x, coords.y, radius);
+      this._turnMatrix[i][j] = Player.o;
+    } else {
+      await this._animationHelper.animateCross(coords.x, coords.y, radius, 5);
+      this._turnMatrix[i][j] = Player.x;
+    }
+    this._unlockDraw();
+
+    this._turnCount++;
+
+  }
+
+  private _drawCrossKnotGetGridPos(coords: Coords) {
+
+    for (let i = 0; i < this.matrixRows; i++) {
+      if (this._xInRange(i, coords.x)) {
+        for (let j = 0; j < this.matrixRows; j++) {
+          if (this._yInRange(j, coords.y)) {
+            console.log('The i, j', i, j);
+            return this._drawCrossKnotAtGridPos(i, j);
+          }
+        }
+      }
+    }
+  }
+
+  private _xInRange(i: number, x: number) {
+    const lineWidth = i ? this.lineWidth : 0;
+    return ((x > (i * this.blockWidth + lineWidth)) && x < ((i + 1) * this.blockWidth));
+  }
+
+  private _yInRange(j: number, y: number) {
+    const lineWidth = j ? this.lineWidth : 0;
+    return ((y > (j * this.blockWidth + lineWidth)) && y < ((j + 1) * this.blockWidth));
   }
 
   tap(event: MouseEvent) {
+
+    if (!this._canDraw) {
+      return;
+    }
+
     const canvas = this.canvas.nativeElement;
 
-    const canvasRangeStart: Coords = {
-      x: canvas.offsetLeft,
-      y: canvas.offsetTop
+    const relativeCoords: Coords = {
+      x: event.clientX - canvas.offsetLeft,
+      y: event.clientY - canvas.offsetTop
     };
 
-    const canvasRangeEnd: Coords = {
-      x: canvas.offsetLeft + this.width,
-      y: canvas.offsetTop + this.height
-    };
+    this._drawCrossKnotGetGridPos(relativeCoords);
 
   }
+
+  private _lockDraw() {
+    this._canDraw = false;
+  }
+
+  private _unlockDraw() {
+    this._canDraw = true;
+  }
+
 
 
 }

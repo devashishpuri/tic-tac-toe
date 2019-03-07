@@ -31,9 +31,13 @@ export class AnimationHelper {
 
     }
 
-    animateCircle(x: number, y: number, radius: number, speed: number = 0.25): Promise<void> {
+    animateCircle(x: number, y: number, radius: number, speed: number = 0.25, lineWidth?: number): Promise<void> {
         if (this._texture) {
             this._context.strokeStyle = <any>this._texture;
+        }
+
+        if (lineWidth) {
+            this._context.lineWidth = lineWidth;
         }
 
         this._context.beginPath();
@@ -61,15 +65,22 @@ export class AnimationHelper {
 
     }
 
-    async animateCross(x: number, y: number, radius: number): Promise<void> {
+    async animateCross(x: number, y: number, radius: number, lineWidth?: number): Promise<void> {
+        if (lineWidth) {
+            this._context.lineWidth = lineWidth;
+        }
         await this.animateLine({ x: x - radius, y: y - radius }, { x: x + radius, y: y + radius });
         await this.animateLine({ x: x + radius, y: y - radius }, { x: x - radius, y: y + radius });
         return;
     }
 
-    animateLine(initial: Coords, final: Coords, speed: number = 5): Promise<void> {
+    animateLine(initial: Coords, final: Coords, speed: number = 5, lineWidth?: number): Promise<void> {
         if (this._texture) {
             this._context.strokeStyle = <any>this._texture;
+        }
+
+        if (lineWidth) {
+            this._context.lineWidth = lineWidth;
         }
 
         this._context.beginPath();
