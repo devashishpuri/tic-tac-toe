@@ -1,3 +1,5 @@
+import { Coords } from '../app.interfaces';
+
 export class AnimationHelper {
     _context: CanvasRenderingContext2D = null;
     _texture: CanvasPattern = null;

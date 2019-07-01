@@ -1,10 +1,8 @@
 import { Component, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { AnimationHelper } from '../_utilities/animation.helper';
-
-enum Player {
-  x,
-  o
-}
+import { Coords } from '../app.interfaces';
+import { MinMaxHelper } from '../_utilities/min-max.helper';
+import { Player } from '../app.structs';
 
 @Component({
   selector: 'app-game',
@@ -24,10 +22,13 @@ export class GameComponent implements AfterViewInit {
   readonly blockWidth = ((this.width - (2 * (this.matrixRows - 1))) / this.matrixRows);
 
   private readonly _animationHelper = new AnimationHelper();
+  private readonly _minMaxHelper = new MinMaxHelper();
 
   private _turnCount = 0;
   private _canDraw = false;
   private _turnMatrix = new Array(this.matrixRows).fill(null).map(() => new Array(this.matrixRows).fill(null));
+
+  private _isCometingWithAi = true;
 
   constructor() { }
 
@@ -98,10 +99,10 @@ export class GameComponent implements AfterViewInit {
     this._lockDraw();
     if (this._turnCount % 2 === 0) {
       await this._animationHelper.animateCircle(coords.x, coords.y, radius);
-      this._turnMatrix[i][j] = Player.o;
+      this._turnMatrix[i][j] = Player.x;
     } else {
       await this._animationHelper.animateCross(coords.x, coords.y, radius, 5);
-      this._turnMatrix[i][j] = Player.x;
+      this._turnMatrix[i][j] = Player.o;
     }
     this._unlockDraw();
 
@@ -109,14 +110,14 @@ export class GameComponent implements AfterViewInit {
 
   }
 
-  private _drawCrossKnotGetGridPos(coords: Coords) {
+  private async _drawCrossKnotGetGridPos(coords: Coords) {
 
     for (let i = 0; i < this.matrixRows; i++) {
       if (this._xInRange(i, coords.x)) {
         for (let j = 0; j < this.matrixRows; j++) {
           if (this._yInRange(j, coords.y)) {
             console.log('The i, j', i, j);
-            return this._drawCrossKnotAtGridPos(i, j);
+            return await this._drawCrossKnotAtGridPos(i, j);
           }
         }
       }
@@ -133,7 +134,7 @@ export class GameComponent implements AfterViewInit {
     return ((y > (j * this.blockWidth + lineWidth)) && y < ((j + 1) * this.blockWidth));
   }
 
-  tap(event: MouseEvent) {
+  async tap(event: MouseEvent) {
 
     if (!this._canDraw) {
       return;
@@ -146,8 +147,35 @@ export class GameComponent implements AfterViewInit {
       y: event.clientY - canvas.offsetTop
     };
 
-    this._drawCrossKnotGetGridPos(relativeCoords);
+    await this._drawCrossKnotGetGridPos(relativeCoords);
 
+    if (this._checkGameStatus()) {
+      /**
+       * If AI is needed, show'em what we got
+       */
+      if (this._isCometingWithAi) {
+        const bestMove = this._minMaxHelper.findBestMove(this._turnMatrix);
+        await this._drawCrossKnotAtGridPos(bestMove.i, bestMove.j);
+
+        this._checkGameStatus();
+      }
+    }
+
+  }
+
+  private _checkGameStatus() {
+    const movesLeft = this._minMaxHelper.areMovesLeft(this._turnMatrix);
+
+    if (!movesLeft) {
+      console.log('Game Over');
+      return false;
+    }
+
+    const a = this._minMaxHelper.evaluateResult(this._turnMatrix);
+
+    console.log('res', a);
+
+    return true;
   }
 
   private _lockDraw() {
